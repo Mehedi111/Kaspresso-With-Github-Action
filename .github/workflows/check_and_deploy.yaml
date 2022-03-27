@@ -1,0 +1,60 @@
+
+name: Test and Deploy
+
+## Actions that will be executed when you push code currently none
+on: push
+
+jobs:
+  unit_tests:
+    name: Run all unit test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current repository in ubuntu's file system
+        uses: actions/checkout@v2
+
+      - name: Unit tests
+        run: ./gradlew test
+
+  android_test:
+    name: Run all instrumentation test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Instrumentation test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          script: ./gradlew connectedAndroidTest
+
+
+  build:
+    needs: [unit_tests, android_test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Generate Release APK
+        run: ./gradlew assembleRelease
+
+      - name: Sign APK
+        uses: r0adkll/sign-android-release@v1
+
+        id: sign_app
+        with:
+          releaseDirectory: app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+          alias: ${{ secrets.ALIAS  }}
+          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD  }}
+          keyPassword: ${{ secrets.KEY_PASSWORD  }}
+
+      - uses: actions/upload-artifact@master
+        with:
+          name: release.apk
+          path: ${{steps.sign_app.outputs.signedReleaseFile}}
+
+      - uses: actions/upload-artifact@master
+        with:
+          name: mapping.txt
+          path: app/build/outputs/mapping/release/mapping.txt
