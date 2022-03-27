@@ -3,6 +3,9 @@ name: Test and Deploy
 
 ## Actions that will be executed when you push code currently none
 on:
+  pull_request:
+    branches:
+      - master
   push:
     tags:
       - 'v*'
